@@ -196,6 +196,8 @@ Requires a GPUI with async-closure `spawn` (2025 and later) and the `futures` cr
 
 Lenient models still implement `Deserialize` (through `json::FromJson`), so `serde_json::from_str` works on them.
 
+**Renamed properties.** Spring services with Jackson's `SNAKE_CASE` naming strategy document the Java names (`titleFa`) but send `title_fa`. Set `"propertyNaming": "snake_case"` for such a backend: models send the snake_case spelling (converted exactly like Jackson's `SnakeCaseStrategy`) and read it, falling back to the document's spelling (`#[serde(alias)]` in strict mode), so properties the backend does not rename still decode.
+
 ## Types
 
 | Schema | Rust |
@@ -232,6 +234,7 @@ Component schemas keep their names in `PascalCase` (`pet.Pet` becomes `PetPet`).
 | `includes` / `excludes` | | Regexes on swagger-typescript style names (`getPetsPetId`) |
 | `ignore.headerParams` | | Header parameters left out (set them in `config.rs`) |
 | `decode` | `strict` | `strict` or `lenient` |
+| `propertyNaming` | `document` | `snake_case` / `camelCase`: how property names are spelled on the wire when the backend renames the document's (Spring + Jackson `SNAKE_CASE`) |
 | `gpui` | `false` | Generate the GPUI layer |
 | `gpuiCrate` | `gpui` | The crate path GPUI is used through |
 | `gpuiHttpTimeout` | `true` | Use `HttpRequestExt::timeout` |

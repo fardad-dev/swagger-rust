@@ -108,6 +108,50 @@ pub fn snake(input: &str) -> String {
         .join("_")
 }
 
+/// Jackson's `SnakeCaseStrategy`, exactly: an `_` before an upper-case
+/// letter that follows a non-upper-case one, then lower case
+/// (`titleFa` → `title_fa`, `productID` → `product_id`, `URLPath` → `urlpath`).
+pub fn jackson_snake(input: &str) -> String {
+    let mut out = String::with_capacity(input.len() + 4);
+    let mut previous_upper = false;
+    for (index, c) in input.chars().enumerate() {
+        if index == 0 && c == '_' {
+            continue;
+        }
+        if c.is_uppercase() {
+            if !previous_upper && !out.is_empty() && !out.ends_with('_') {
+                out.push('_');
+            }
+            out.extend(c.to_lowercase());
+            previous_upper = true;
+        } else {
+            out.push(c);
+            previous_upper = false;
+        }
+    }
+    out
+}
+
+/// `title_fa` → `titleFa`; names without `_` are kept.
+pub fn lower_camel(input: &str) -> String {
+    if !input.contains('_') {
+        return input.to_owned();
+    }
+    let mut out = String::with_capacity(input.len());
+    let mut upper_next = false;
+    for c in input.chars() {
+        if c == '_' {
+            upper_next = !out.is_empty();
+        } else if upper_next {
+            out.extend(c.to_uppercase());
+            upper_next = false;
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// `getPetsPetId` → `GET_PETS_PET_ID`.
 pub fn screaming(input: &str) -> String {
     snake(input).to_uppercase()
@@ -327,6 +371,18 @@ mod tests {
         assert_eq!(variant_ident("ORG_EXCLUSIVE"), "OrgExclusive");
         assert_eq!(variant_ident("2xl"), "V2xl");
         assert_eq!(variant_ident(""), "Empty");
+    }
+
+    #[test]
+    fn wire_names() {
+        assert_eq!(jackson_snake("titleFa"), "title_fa");
+        assert_eq!(jackson_snake("isInactive"), "is_inactive");
+        assert_eq!(jackson_snake("productID"), "product_id");
+        assert_eq!(jackson_snake("URLPath"), "urlpath");
+        assert_eq!(jackson_snake("categoryLevel1"), "category_level1");
+        assert_eq!(jackson_snake("already_snake"), "already_snake");
+        assert_eq!(lower_camel("title_fa"), "titleFa");
+        assert_eq!(lower_camel("id"), "id");
     }
 
     #[test]

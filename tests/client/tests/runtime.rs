@@ -4,7 +4,9 @@
 use futures::executor::block_on;
 use serde_json::json;
 use std::sync::Mutex;
-use swagger_rust_test_client::{openapi31, petstore_lenient as lenient, petstore_strict as strict, swagger2};
+use swagger_rust_test_client::{
+    naming_lenient, naming_strict, openapi31, petstore_lenient as lenient, petstore_strict as strict, swagger2,
+};
 
 #[derive(Debug, Clone)]
 struct Sent {
@@ -64,7 +66,7 @@ macro_rules! mock_transport {
         }
     )*};
 }
-mock_transport!(strict, lenient, swagger2, openapi31);
+mock_transport!(strict, lenient, swagger2, openapi31, naming_strict, naming_lenient);
 
 #[test]
 fn query_and_header_parameters_and_typed_response() {
@@ -295,4 +297,31 @@ fn object_query_parameters_follow_their_style() {
         mock.last().url,
         "https://eu.petstore.example/v1/feed/spring?page=0&size=20&sort=name&filter%5Bcolor%5D=red"
     );
+}
+
+#[test]
+fn renamed_properties_use_wire_names_and_accept_the_documents() {
+    // `title_fa` and `default_variant.seller_id` as the wire spells them,
+    // `isInactive` as the document does.
+    let body = json!({"id": 1, "title_fa": "x", "isInactive": true, "already_snake": "s", "default_variant": {"seller_id": 5}});
+
+    let product = block_on(naming_lenient::apis::get_products_product_id(&Mock::json(body.clone()), 1)).unwrap();
+    assert_eq!(product.title_fa, "x");
+    assert_eq!(product.is_inactive, Some(true));
+    assert_eq!(product.already_snake.as_deref(), Some("s"));
+    assert_eq!(product.default_variant.unwrap().seller_id, Some(5));
+
+    let product = block_on(naming_strict::apis::get_products_product_id(&Mock::json(body), 1)).unwrap();
+    assert_eq!(product.title_fa, "x");
+    assert_eq!(product.is_inactive, Some(true));
+    assert_eq!(product.default_variant.as_ref().unwrap().seller_id, Some(5));
+
+    // Requests use the wire spelling.
+    let mock = Mock::json(json!({"title_fa": "y"}));
+    block_on(naming_strict::apis::post_products(&mock, &product)).unwrap();
+    let sent: serde_json::Value = serde_json::from_slice(&mock.last().body).unwrap();
+    assert_eq!(sent["title_fa"], "x");
+    assert_eq!(sent["is_inactive"], true);
+    assert_eq!(sent["default_variant"]["seller_id"], 5);
+    assert!(sent.get("titleFa").is_none());
 }

@@ -58,6 +58,17 @@ pub fn optional<T: FromJson>(object: &mut Map<String, Value>, key: &str) -> Opti
     }
 }
 
+/// [`field`] under `key`, else under `alias` (the document's spelling of a
+/// renamed property).
+pub fn field_or<T: FromJson + Default>(object: &mut Map<String, Value>, key: &str, alias: &str) -> T {
+    optional_or(object, key, alias).unwrap_or_default()
+}
+
+/// [`optional`] under `key`, else under `alias`.
+pub fn optional_or<T: FromJson>(object: &mut Map<String, Value>, key: &str, alias: &str) -> Option<T> {
+    optional(object, key).or_else(|| optional(object, alias))
+}
+
 /// A scalar as text: strings as they are, numbers and booleans written out.
 pub fn text(value: Value) -> Option<String> {
     match value {

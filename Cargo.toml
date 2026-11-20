@@ -1,6 +1,6 @@
 [package]
 name = "swagger-rust"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.85"
 description = "Generate typed Rust API clients from OpenAPI 3 / Swagger 2: serde models, async endpoint functions and optional GPUI queries"

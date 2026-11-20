@@ -89,6 +89,9 @@ pub struct Field {
     pub flatten: bool,
     /// The schema's `minimum`, which tells 0- from 1-based page numbers.
     pub minimum: Option<f64>,
+    /// The document's name when `json` is a renamed wire name
+    /// (`propertyNaming`): accepted when decoding.
+    pub alias: Option<String>,
 }
 
 impl Field {

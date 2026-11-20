@@ -94,6 +94,9 @@ fn structure(s: &StructDef, lenient: bool) -> String {
         } else if field.name != field.json {
             attributes.push(format!("rename = {}", string_literal(&field.json)));
         }
+        if let Some(alias) = field.alias.as_ref().filter(|_| !lenient && !s.input_only) {
+            attributes.push(format!("alias = {}", string_literal(alias)));
+        }
         if field.optional {
             if !lenient && !s.input_only {
                 attributes.push("default".to_owned());
@@ -120,11 +123,20 @@ fn structure(s: &StructDef, lenient: bool) -> String {
             out.push_str("        let mut object = json::object(value)?;\n        Some(Self {\n");
             for field in &s.fields {
                 let reader = if field.optional { "optional" } else { "field" };
-                out.push_str(&format!(
-                    "            {}: json::{reader}(&mut object, {}),\n",
-                    field.name,
-                    string_literal(&field.json)
-                ));
+                match &field.alias {
+                    // The wire name, then the document's.
+                    Some(alias) => out.push_str(&format!(
+                        "            {}: json::{reader}_or(&mut object, {}, {}),\n",
+                        field.name,
+                        string_literal(&field.json),
+                        string_literal(alias)
+                    )),
+                    None => out.push_str(&format!(
+                        "            {}: json::{reader}(&mut object, {}),\n",
+                        field.name,
+                        string_literal(&field.json)
+                    )),
+                }
             }
             out.push_str("        })\n");
         }

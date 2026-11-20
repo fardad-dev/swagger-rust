@@ -84,6 +84,32 @@ fn openapi31() {
 }
 
 #[test]
+fn naming_strict() {
+    let dir = root().join("tests/client/src/naming_strict");
+    check(
+        "naming_strict",
+        config(
+            "naming.json",
+            &dir,
+            json!({ "propertyNaming": "snake_case" }),
+        ),
+    );
+}
+
+#[test]
+fn naming_lenient() {
+    let dir = root().join("tests/client/src/naming_lenient");
+    check(
+        "naming_lenient",
+        config(
+            "naming.json",
+            &dir,
+            json!({ "propertyNaming": "snake_case", "decode": "lenient" }),
+        ),
+    );
+}
+
+#[test]
 fn petstore_gpui() {
     let dir = root().join("tests/gpui-client/src/petstore");
     check(

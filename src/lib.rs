@@ -21,7 +21,7 @@ mod swagger2;
 mod types;
 mod write;
 
-pub use config::{Config, Decode};
+pub use config::{Config, Decode, PropertyNaming};
 
 use anyhow::{Context as _, Result};
 use std::path::PathBuf;
@@ -75,7 +75,7 @@ pub fn generate_from_document(
     document: &serde_json::Value,
     options: Options,
 ) -> Result<Report> {
-    let mut types = types::Types::new(document);
+    let mut types = types::Types::with_naming(document, config.property_naming);
     let (operations, mut warnings) = operations::build(document, config, &mut types)?;
     types.finish();
     warnings.extend(types.warnings.iter().cloned());

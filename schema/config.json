@@ -24,6 +24,7 @@
           }
         },
         "decode": { "enum": ["strict", "lenient"], "default": "strict", "description": "strict: serde derives. lenient: tolerant decoding for backends whose JSON drifts from the schema." },
+        "propertyNaming": { "enum": ["document", "snake_case", "camelCase"], "default": "document", "description": "How model property names are spelled on the wire when the backend renames the document's (Spring + Jackson SNAKE_CASE documents titleFa but sends title_fa). Decoding also accepts the document's spelling." },
         "gpui": { "type": "boolean", "default": false, "description": "Generate the GPUI layer: an HttpClient transport and cached queries." },
         "gpuiCrate": { "type": "string", "default": "gpui", "description": "The crate GPUI is used through, e.g. gpui or gpui_kit." },
         "gpuiHttpTimeout": { "type": "boolean", "default": true, "description": "Use HttpRequestExt::timeout; turn off for GPUI versions without it." },

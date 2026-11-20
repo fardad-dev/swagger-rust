@@ -1,0 +1,35 @@
+{
+  "openapi": "3.0.1",
+  "info": { "title": "Renamed properties", "version": "1" },
+  "servers": [{ "url": "https://naming.example" }],
+  "paths": {
+    "/products/{productId}": {
+      "get": {
+        "parameters": [{ "name": "productId", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "ok", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ProductDto" } } } } }
+      }
+    },
+    "/products": {
+      "post": {
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductDto" } } } },
+        "responses": { "200": { "description": "ok", "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ProductDto" } } } } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ProductDto": {
+        "type": "object",
+        "required": ["titleFa"],
+        "properties": {
+          "id": { "type": "integer" },
+          "titleFa": { "type": "string" },
+          "isInactive": { "type": "boolean" },
+          "already_snake": { "type": "string" },
+          "defaultVariant": { "$ref": "#/components/schemas/VariantDto" }
+        }
+      },
+      "VariantDto": { "type": "object", "properties": { "sellerId": { "type": "integer" } } }
+    }
+  }
+}

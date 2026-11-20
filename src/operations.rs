@@ -314,6 +314,7 @@ fn extra_query_field(fields: &[Field]) -> Field {
         deprecated: false,
         flatten: true,
         minimum: None,
+        alias: None,
     }
 }
 
@@ -343,6 +344,7 @@ fn param_fields(struct_name: &str, params: &[&Param], types: &mut Types) -> Vec<
                 deprecated: param.schema.deprecated,
                 flatten: param.location == "query" && form && object,
                 minimum: param.schema.minimum,
+                alias: None,
             }
         })
         .collect()
@@ -481,6 +483,7 @@ fn multipart(prefix: &str, schema: &Schema, types: &mut Types) -> Body {
             deprecated: property.deprecated,
             flatten: false,
             minimum: property.minimum,
+            alias: None,
         });
     }
     types.insert(Def::Struct(StructDef {

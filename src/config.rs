@@ -25,6 +25,23 @@ pub enum Decode {
     Lenient,
 }
 
+/// How property names appear on the wire, when the backend renames the
+/// document's (Spring with Jackson's `SNAKE_CASE` strategy documents the
+/// Java names, `titleFa`, but sends `title_fa`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+pub enum PropertyNaming {
+    /// As the document spells them.
+    #[default]
+    #[serde(rename = "document")]
+    Document,
+    /// `titleFa` → `title_fa` (Jackson's `SnakeCaseStrategy`).
+    #[serde(rename = "snake_case")]
+    SnakeCase,
+    /// `title_fa` → `titleFa`.
+    #[serde(rename = "camelCase")]
+    CamelCase,
+}
+
 /// One API to generate.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -82,6 +99,10 @@ pub struct Config {
     /// it off for GPUI versions whose http client has no `timeout`.
     #[serde(default = "default_true")]
     pub gpui_http_timeout: bool,
+    /// How model property names are spelled on the wire. Models send that
+    /// spelling and read it, falling back to the document's.
+    #[serde(default)]
+    pub property_naming: PropertyNaming,
     /// The base url written into `config.rs` when it is first created.
     /// Defaults to the document's first absolute server url.
     #[serde(default)]

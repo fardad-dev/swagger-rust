@@ -7,6 +7,7 @@
 //! with the same name and values, so a header enum repeated on 80
 //! endpoints is one type.
 
+use crate::config::PropertyNaming;
 use crate::ir::*;
 use crate::naming::{self, Names};
 use crate::schema::{Additional, Schema};
@@ -141,6 +142,7 @@ pub struct Types<'a> {
     component_names: HashMap<String, String>,
     pub defs: BTreeMap<String, Def>,
     building: HashSet<String>,
+    naming: PropertyNaming,
     /// Components that may be `null` wherever they are used.
     nullable_components: HashSet<String>,
     /// Structs some union decodes into; they get `FIELDS`/`REQUIRED`.
@@ -188,7 +190,14 @@ fn decode_segment(segment: &str) -> String {
 }
 
 impl<'a> Types<'a> {
+    #[cfg(test)]
     pub fn new(document: &'a Value) -> Self {
+        Self::with_naming(document, PropertyNaming::Document)
+    }
+
+    /// [`Types::new`], with model properties spelled as `naming` says on the
+    /// wire.
+    pub fn with_naming(document: &'a Value, naming: PropertyNaming) -> Self {
         let schemas = document
             .pointer("/components/schemas")
             .and_then(Value::as_object)
@@ -206,9 +215,19 @@ impl<'a> Types<'a> {
             component_names,
             defs: BTreeMap::new(),
             building: HashSet::new(),
+            naming,
             nullable_components: HashSet::new(),
             union_members: HashSet::new(),
             warnings: Vec::new(),
+        }
+    }
+
+    /// How a property the document calls `name` is spelled on the wire.
+    fn wire_name(&self, name: &str) -> String {
+        match self.naming {
+            PropertyNaming::Document => name.to_owned(),
+            PropertyNaming::SnakeCase => naming::jackson_snake(name),
+            PropertyNaming::CamelCase => naming::lower_camel(name),
         }
     }
 
@@ -492,9 +511,11 @@ impl<'a> Types<'a> {
         for (json, property) in properties {
             let (ty, nullable) = self.build(&property, &Hint::field(&parent, &json), None);
             let optional = nullable || !required.contains(&json);
+            let wire = self.wire_name(&json);
+            let alias = (wire != json).then(|| json.clone());
             fields.push(Field {
-                name: field_names.unique(&naming::value_ident(&json)),
-                json,
+                name: field_names.unique(&naming::value_ident(&wire)),
+                json: wire,
                 ty,
                 optional,
                 boxed: false,
@@ -502,6 +523,7 @@ impl<'a> Types<'a> {
                 deprecated: property.deprecated,
                 flatten: false,
                 minimum: property.minimum,
+                alias,
             });
         }
         let name = match named {
@@ -593,7 +615,7 @@ impl<'a> Types<'a> {
                     }
                 }
             }
-            (discriminator.property.clone(), mapping)
+            (self.wire_name(&discriminator.property), mapping)
         });
 
         for variant in &variants {
