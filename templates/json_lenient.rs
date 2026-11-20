@@ -1,0 +1,259 @@
+//! Tolerant JSON decoding, for backends whose JSON drifts from their
+//! schema: a number sent as a string (or the reverse), `[]` for an empty
+//! object, `0`/`1` for booleans, a missing required field or an enum value
+//! this client doesn't know. A value that can't be read costs that field
+//! (it falls back to its default, or `None`), not the whole response.
+//!
+//! The models implement [`FromJson`] (and `serde::Deserialize` through it).
+#![allow(dead_code, clippy::pedantic, clippy::nursery)]
+
+use serde_json::{Map, Value};
+use std::collections::HashMap;
+
+/// Reads a type from JSON, tolerantly.
+pub trait FromJson: Sized {
+    /// `None` when `value` can't be read as `Self` at all.
+    fn from_json(value: Value) -> Option<Self>;
+}
+
+/// What a JSON response type implements.
+pub use self::FromJson as Decode;
+
+/// Decodes `value` as `T`.
+pub fn decode<T: Decode>(value: Value) -> Result<T, String> {
+    let kind = kind(&value);
+    T::from_json(value).ok_or_else(|| format!("expected {}, found {kind}", std::any::type_name::<T>()))
+}
+
+fn kind(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "a boolean",
+        Value::Number(_) => "a number",
+        Value::String(_) => "a string",
+        Value::Array(_) => "an array",
+        Value::Object(_) => "an object",
+    }
+}
+
+/// An object; `[]` (PHP's empty array) is an empty object.
+pub fn object(value: Value) -> Option<Map<String, Value>> {
+    match value {
+        Value::Object(map) => Some(map),
+        Value::Array(items) if items.is_empty() => Some(Map::new()),
+        _ => None,
+    }
+}
+
+/// A required field: its default when missing, `null` or unreadable.
+pub fn field<T: FromJson + Default>(object: &mut Map<String, Value>, key: &str) -> T {
+    object.remove(key).and_then(T::from_json).unwrap_or_default()
+}
+
+/// An optional field: `None` when missing, `null` or unreadable.
+pub fn optional<T: FromJson>(object: &mut Map<String, Value>, key: &str) -> Option<T> {
+    match object.remove(key) {
+        None | Some(Value::Null) => None,
+        Some(value) => T::from_json(value),
+    }
+}
+
+/// A scalar as text: strings as they are, numbers and booleans written out.
+pub fn text(value: Value) -> Option<String> {
+    match value {
+        Value::String(s) => Some(s),
+        Value::Number(n) => Some(n.to_string()),
+        Value::Bool(b) => Some(b.to_string()),
+        _ => None,
+    }
+}
+
+fn number(value: &Value) -> Option<f64> {
+    match value {
+        Value::Number(n) => n.as_f64(),
+        Value::String(s) => s.trim().parse::<f64>().ok(),
+        Value::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+        _ => None,
+    }
+    .filter(|n| n.is_finite())
+}
+
+fn integer(value: &Value) -> Option<i64> {
+    match value {
+        Value::Number(n) => n.as_i64().or_else(|| n.as_u64().map(|u| u.min(i64::MAX as u64) as i64)).or_else(|| {
+            // `as` saturates, which is what a garbage price needs.
+            n.as_f64().filter(|f| f.is_finite()).map(|f| f.round() as i64)
+        }),
+        Value::String(s) => {
+            let s = s.trim();
+            s.parse::<i64>().ok().or_else(|| s.parse::<f64>().ok().filter(|f| f.is_finite()).map(|f| f.round() as i64))
+        }
+        Value::Bool(b) => Some(i64::from(*b)),
+        _ => None,
+    }
+}
+
+impl FromJson for String {
+    fn from_json(value: Value) -> Option<Self> {
+        text(value)
+    }
+}
+
+impl FromJson for bool {
+    fn from_json(value: Value) -> Option<Self> {
+        match value {
+            Value::Bool(b) => Some(b),
+            Value::Number(n) => n.as_f64().map(|f| f != 0.0),
+            Value::String(s) => match s.trim().to_ascii_lowercase().as_str() {
+                "true" | "1" | "yes" => Some(true),
+                "false" | "0" | "no" | "" => Some(false),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+}
+
+impl FromJson for i64 {
+    fn from_json(value: Value) -> Option<Self> {
+        integer(&value)
+    }
+}
+
+impl FromJson for i32 {
+    fn from_json(value: Value) -> Option<Self> {
+        integer(&value).map(|n| n.clamp(i32::MIN as i64, i32::MAX as i64) as i32)
+    }
+}
+
+impl FromJson for f64 {
+    fn from_json(value: Value) -> Option<Self> {
+        number(&value)
+    }
+}
+
+impl FromJson for Value {
+    fn from_json(value: Value) -> Option<Self> {
+        Some(value)
+    }
+}
+
+impl FromJson for Map<String, Value> {
+    fn from_json(value: Value) -> Option<Self> {
+        object(value)
+    }
+}
+
+impl FromJson for () {
+    fn from_json(_: Value) -> Option<Self> {
+        Some(())
+    }
+}
+
+/// Elements that can't be read are skipped. An object with numeric keys
+/// (a PHP array with gaps) is read as its values.
+impl<T: FromJson> FromJson for Vec<T> {
+    fn from_json(value: Value) -> Option<Self> {
+        match value {
+            Value::Array(items) => Some(items.into_iter().filter_map(T::from_json).collect()),
+            Value::Object(map) => Some(map.into_iter().filter_map(|(_, v)| T::from_json(v)).collect()),
+            _ => None,
+        }
+    }
+}
+
+/// Entries that can't be read are skipped; `[]` is an empty map, a
+/// non-empty array is keyed by index.
+impl<T: FromJson> FromJson for HashMap<String, T> {
+    fn from_json(value: Value) -> Option<Self> {
+        match value {
+            Value::Object(map) => Some(map.into_iter().filter_map(|(k, v)| Some((k, T::from_json(v)?))).collect()),
+            Value::Array(items) => Some(
+                items.into_iter().enumerate().filter_map(|(i, v)| Some((i.to_string(), T::from_json(v)?))).collect(),
+            ),
+            _ => None,
+        }
+    }
+}
+
+/// `null` is `None`; so is a value that can't be read.
+impl<T: FromJson> FromJson for Option<T> {
+    fn from_json(value: Value) -> Option<Self> {
+        match value {
+            Value::Null => Some(None),
+            value => Some(T::from_json(value)),
+        }
+    }
+}
+
+impl<T: FromJson> FromJson for Box<T> {
+    fn from_json(value: Value) -> Option<Self> {
+        T::from_json(value).map(Box::new)
+    }
+}
+
+/// Implements `serde::Deserialize` through [`FromJson`] for the listed
+/// models, so they work with `serde_json::from_str` and friends too.
+macro_rules! deserialize_via_from_json {
+    ($($name:ty),* $(,)?) => {$(
+        impl<'de> serde::Deserialize<'de> for $name {
+            fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                let value = <serde_json::Value as serde::Deserialize>::deserialize(deserializer)?;
+                super::json::decode(value).map_err(<D::Error as serde::de::Error>::custom)
+            }
+        }
+    )*};
+}
+pub(crate) use deserialize_via_from_json;
+
+/// How well `value` fits a union variant (`None`: not at all).
+pub enum Shape {
+    /// A struct: its JSON field names, and the required ones.
+    Object(&'static [&'static str], &'static [&'static str]),
+    String,
+    Integer,
+    Number,
+    Bool,
+    Array,
+    /// Anything (a free-form object, `Value`, an alias).
+    Any,
+}
+
+/// Scores `value` against `shape`; higher is a better fit, `None` is no fit.
+pub fn score(value: &Value, shape: &Shape) -> Option<i64> {
+    match (shape, value) {
+        (Shape::Object(fields, required), Value::Object(map)) => {
+            let known = map.keys().filter(|key| fields.contains(&key.as_str())).count() as i64;
+            let unknown = map.len() as i64 - known;
+            let missing = required.iter().filter(|name| !map.contains_key(**name)).count() as i64;
+            Some(known * 4 - unknown - missing * 8)
+        }
+        (Shape::Object(..), Value::Array(items)) if items.is_empty() => Some(0),
+        (Shape::String, Value::String(_)) => Some(1),
+        (Shape::String, Value::Number(_)) => Some(0),
+        (Shape::Integer, Value::Number(n)) if n.is_i64() || n.is_u64() => Some(1),
+        (Shape::Integer | Shape::Number, Value::String(s)) if s.trim().parse::<f64>().is_ok() => Some(0),
+        (Shape::Number, Value::Number(_)) => Some(1),
+        (Shape::Bool, Value::Bool(_)) => Some(1),
+        (Shape::Array, Value::Array(_)) => Some(1),
+        (Shape::Any, _) => Some(0),
+        _ => None,
+    }
+}
+
+/// Indexes of the variants that fit, best first (ties keep their order).
+pub fn ranked(scores: &[Option<i64>]) -> Vec<usize> {
+    let mut indexes: Vec<usize> = (0..scores.len()).filter(|&i| scores[i].is_some()).collect();
+    indexes.sort_by_key(|&i| std::cmp::Reverse(scores[i]));
+    indexes
+}
+
+/// The discriminator value of a tagged union body.
+pub fn tag(value: &Value, property: &str) -> Option<String> {
+    match value.get(property)? {
+        Value::String(s) => Some(s.clone()),
+        Value::Number(n) => Some(n.to_string()),
+        Value::Bool(b) => Some(b.to_string()),
+        _ => None,
+    }
+}

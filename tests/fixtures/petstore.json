@@ -1,0 +1,167 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Petstore", "version": "1.0.0", "description": "Exercises every feature swagger-rust supports." },
+  "servers": [{ "url": "https://{region}.petstore.example/v1", "variables": { "region": { "default": "eu" } } }],
+  "paths": {
+    "/pets": {
+      "get": {
+        "operationId": "listPets",
+        "summary": "List pets",
+        "description": "Pets, filtered.\n\n```\nGET /pets?status=available\n```",
+        "parameters": [
+          { "name": "status", "in": "query", "description": "Statuses to keep", "schema": { "type": "array", "items": { "$ref": "#/components/schemas/PetStatus" } } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "format": "int32" } },
+          { "name": "X-Request-Id", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "X-App-Version", "in": "header", "schema": { "type": "string" } },
+          { "name": "session", "in": "cookie", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "ok", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Pet" } } } } },
+          "default": { "description": "error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "post": {
+        "summary": "Add a pet",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Pet" } } } },
+        "responses": { "201": { "description": "created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Pet" } } } } }
+      }
+    },
+    "/pets/{petId}": {
+      "parameters": [{ "name": "petId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }],
+      "get": {
+        "summary": "A pet",
+        "responses": { "200": { "description": "ok", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Pet" } } } } }
+      },
+      "delete": {
+        "deprecated": true,
+        "responses": { "204": { "description": "deleted" } }
+      }
+    },
+    "/pets/{petId}/photo": {
+      "put": {
+        "parameters": [{ "name": "petId", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "extra": { "type": "array", "items": { "type": "string", "format": "binary" } },
+                  "caption": { "type": "string" },
+                  "status": { "$ref": "#/components/schemas/PetStatus" },
+                  "meta": { "type": "object", "properties": { "width": { "type": "integer" } } }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "ok", "content": { "application/json": { "schema": { "type": "object", "properties": { "url": { "type": "string" } } } } } } }
+      }
+    },
+    "/pets/{petId}/image": {
+      "get": {
+        "parameters": [{ "name": "petId", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "png", "content": { "image/png": { "schema": { "type": "string", "format": "binary" } } } } }
+      }
+    },
+    "/owners/{owner name}/pets": {
+      "get": {
+        "parameters": [
+          { "name": "owner name", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "kind", "in": "query", "schema": { "type": "string", "enum": ["cat", "dog"] } }
+        ],
+        "responses": { "200": { "description": "ok", "content": { "*/*": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Pet" } } } } } }
+      }
+    },
+    "/login": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "type": "object", "required": ["user"], "properties": { "user": { "type": "string" }, "scopes": { "type": "array", "items": { "type": "string" } } } }
+            }
+          }
+        },
+        "responses": { "200": { "description": "token", "content": { "text/plain": { "schema": { "type": "string" } } } } }
+      }
+    },
+    "/animals/{id}": {
+      "get": {
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "ok", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Animal" } } } } }
+      }
+    },
+    "/shapes": {
+      "get": {
+        "responses": { "200": { "description": "ok", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Shape" } } } } } }
+      }
+    },
+    "/feed": {
+      "get": {
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "format": "int32" } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "ok", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FeedPage" } } } } }
+      }
+    },
+    "/search": {
+      "post": {
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "text": { "type": "string" }, "filter": { "type": "object", "additionalProperties": { "type": "integer" } } } } } } },
+        "responses": { "200": { "description": "ok", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/StringOrNumber" } } } } } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Pet": {
+        "type": "object",
+        "description": "A pet.\n\n    indented, not code\n",
+        "required": ["id", "name", "status"],
+        "properties": {
+          "id": { "$ref": "#/components/schemas/Id" },
+          "name": { "type": "string" },
+          "nickname": { "type": "string", "nullable": true },
+          "status": { "$ref": "#/components/schemas/PetStatus" },
+          "type": { "type": "string", "description": "A keyword as a field name" },
+          "3d_model": { "type": "string", "description": "Starts with a digit" },
+          "tags": { "type": "array", "items": { "$ref": "#/components/schemas/Tag" } },
+          "owner": { "type": "object", "properties": { "name": { "type": "string" }, "age": { "type": "integer", "format": "int32" } } },
+          "parent": { "$ref": "#/components/schemas/Pet" },
+          "children": { "type": "array", "items": { "$ref": "#/components/schemas/Pet" } },
+          "attributes": { "type": "object", "additionalProperties": { "type": "string" } },
+          "extra": { "type": "object", "additionalProperties": true },
+          "weight": { "type": "number", "format": "float" },
+          "vaccinated": { "type": "boolean" },
+          "size": { "type": "integer", "enum": [1, 2, 3], "x-enumNames": ["Small", "Medium", "Large"] },
+          "legacy_code": { "type": "string", "deprecated": true }
+        }
+      },
+      "PetStatus": { "type": "string", "enum": ["available", "pending", "sold"] },
+      "Id": { "type": "integer", "format": "int64" },
+      "Tag": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" } } },
+      "Error": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string" }, "code": { "type": "integer" } } },
+      "Base": { "type": "object", "required": ["kind"], "properties": { "kind": { "type": "string" }, "name": { "type": "string" } } },
+      "Cat": { "allOf": [{ "$ref": "#/components/schemas/Base" }, { "type": "object", "properties": { "lives": { "type": "integer" } } }] },
+      "Dog": { "allOf": [{ "$ref": "#/components/schemas/Base" }, { "type": "object", "properties": { "good": { "type": "boolean" } } }] },
+      "Animal": {
+        "oneOf": [{ "$ref": "#/components/schemas/Cat" }, { "$ref": "#/components/schemas/Dog" }],
+        "discriminator": { "propertyName": "kind", "mapping": { "cat": "#/components/schemas/Cat", "dog": "#/components/schemas/Dog" } }
+      },
+      "Circle": { "type": "object", "required": ["radius"], "properties": { "radius": { "type": "number" } } },
+      "Square": { "type": "object", "required": ["side"], "properties": { "side": { "type": "number" }, "rounded": { "type": "boolean" } } },
+      "Shape": { "oneOf": [{ "$ref": "#/components/schemas/Circle" }, { "$ref": "#/components/schemas/Square" }] },
+      "StringOrNumber": { "oneOf": [{ "type": "string" }, { "type": "integer" }] },
+      "FeedPage": {
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/Pet" } },
+          "pager": { "type": "object", "properties": { "current_page": { "type": "integer" }, "total_pages": { "type": "integer" } } }
+        }
+      },
+      "Unused": { "type": "object", "properties": { "never": { "type": "string" } } }
+    }
+  }
+}

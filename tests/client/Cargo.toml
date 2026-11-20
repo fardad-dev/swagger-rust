@@ -1,0 +1,11 @@
+[package]
+name = "swagger-rust-test-client"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Compiles and tests clients generated from tests/fixtures (see tests/generate.rs)"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+futures = { version = "0.3", default-features = false, features = ["executor"] }

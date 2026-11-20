@@ -1,0 +1,35 @@
+[package]
+name = "swagger-rust"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Generate typed Rust API clients from OpenAPI 3 / Swagger 2: serde models, async endpoint functions and optional GPUI queries"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/fardad-dev/swagger-rust"
+homepage = "https://github.com/fardad-dev/swagger-rust"
+authors = ["Hossein Mohammadi"]
+keywords = ["openapi", "swagger", "codegen", "gpui", "serde"]
+categories = ["development-tools", "api-bindings", "command-line-utilities"]
+exclude = ["tests"]
+
+[[bin]]
+name = "swagger-rust"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+# `preserve_order` keeps the spec's property order, so models list fields the
+# way the API documents them.
+serde_json = { version = "1", features = ["preserve_order"] }
+serde_yaml_ng = "0.10"
+ureq = "3"
+
+[workspace]
+members = [".", "tests/client"]
+# Compiles the GPUI flavour of the output; needs a GPUI checkout, so it is
+# built on demand (see tests/gpui-client/README.md), not with the workspace.
+exclude = ["tests/gpui-client"]

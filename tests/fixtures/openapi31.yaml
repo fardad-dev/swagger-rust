@@ -1,0 +1,42 @@
+openapi: 3.1.0
+info:
+  title: OpenAPI 3.1 features
+  version: "1"
+paths:
+  /items/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+components:
+  schemas:
+    Item:
+      type: object
+      required: [id, kind, label]
+      properties:
+        id:
+          type: string
+        kind:
+          const: item
+        label:
+          type: [string, "null"]
+        price:
+          type: [number, "null"]
+        parent:
+          oneOf:
+            - $ref: "#/components/schemas/Item"
+            - type: "null"
+        tags:
+          type: array
+          items:
+            type: [string, "null"]

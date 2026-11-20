@@ -1,0 +1,49 @@
+{
+  "swagger": "2.0",
+  "info": { "title": "Swagger 2 store", "version": "2.0" },
+  "host": "store.example",
+  "basePath": "/api",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/orders/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "type": "integer", "format": "int64" }],
+      "get": {
+        "parameters": [{ "name": "expand", "in": "query", "type": "array", "items": { "type": "string" }, "collectionFormat": "csv" }],
+        "responses": { "200": { "description": "ok", "schema": { "$ref": "#/definitions/order.Order" } } }
+      },
+      "put": {
+        "parameters": [{ "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/order.Order" } }],
+        "responses": { "200": { "description": "ok", "schema": { "$ref": "#/definitions/order.Order" } } }
+      }
+    },
+    "/orders/{id}/receipt": {
+      "post": {
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "type": "integer" },
+          { "name": "file", "in": "formData", "required": true, "type": "file" },
+          { "name": "note", "in": "formData", "type": "string" }
+        ],
+        "responses": { "204": { "description": "stored" } }
+      }
+    }
+  },
+  "definitions": {
+    "order.Order": {
+      "type": "object",
+      "required": ["id", "state"],
+      "properties": {
+        "id": { "type": "integer", "format": "int64" },
+        "state": { "$ref": "#/definitions/order.State" },
+        "note": { "type": "string", "x-nullable": true },
+        "lines": { "type": "array", "items": { "$ref": "#/definitions/order.Line" } },
+        "shipping": { "description": "Wrapped in allOf to carry a description.", "allOf": [{ "$ref": "#/definitions/order.Address" }] }
+      }
+    },
+    "order.State": { "type": "integer", "enum": [0, 1, 2], "x-enum-varnames": ["StateNew", "StatePaid", "StateShipped"] },
+    "order.Line": { "type": "object", "properties": { "sku": { "type": "string" }, "qty": { "type": "integer" } } },
+    "order.Address": { "type": "object", "properties": { "city": { "type": "string" } } }
+  }
+}

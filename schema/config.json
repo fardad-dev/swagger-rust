@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "swagger-rust config",
+  "description": "swagger-rust.json: one API to generate, or a list of them.",
+  "oneOf": [{ "$ref": "#/definitions/entry" }, { "type": "array", "items": { "$ref": "#/definitions/entry" } }],
+  "definitions": {
+    "entry": {
+      "type": "object",
+      "required": ["url", "dir"],
+      "additionalProperties": false,
+      "properties": {
+        "$schema": { "type": "string" },
+        "url": { "type": "string", "description": "OpenAPI 3 / Swagger 2 document: an http(s) url or a file path (relative to this file), JSON or YAML." },
+        "dir": { "type": "string", "description": "Output directory, relative to this file. It becomes a Rust module." },
+        "methodName": { "type": "string", "description": "Function name template with {method}, {path} and {operationId}. Default {method}{path}." },
+        "prefix": { "type": "string", "description": "A path prefix (regular expression) left out of {path}." },
+        "includes": { "type": "array", "items": { "type": "string" }, "description": "Only endpoints whose swagger-typescript style name (getPetsPetId) matches one of these regular expressions." },
+        "excludes": { "type": "array", "items": { "type": "string" }, "description": "Endpoints whose name matches one of these regular expressions are skipped." },
+        "ignore": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "headerParams": { "type": "array", "items": { "type": "string" }, "description": "Header parameters left out of the generated functions." }
+          }
+        },
+        "decode": { "enum": ["strict", "lenient"], "default": "strict", "description": "strict: serde derives. lenient: tolerant decoding for backends whose JSON drifts from the schema." },
+        "gpui": { "type": "boolean", "default": false, "description": "Generate the GPUI layer: an HttpClient transport and cached queries." },
+        "gpuiCrate": { "type": "string", "default": "gpui", "description": "The crate GPUI is used through, e.g. gpui or gpui_kit." },
+        "gpuiHttpTimeout": { "type": "boolean", "default": true, "description": "Use HttpRequestExt::timeout; turn off for GPUI versions without it." },
+        "useQuery": { "type": "array", "items": { "type": "string" }, "description": "Non-GET endpoints that also get a GPUI query." },
+        "useInfiniteQuery": { "type": "array", "items": { "type": "string" }, "description": "Endpoints whose GPUI query pages through page/pageNo/pageNumber/offset." },
+        "baseUrl": { "type": "string", "description": "BASE_URL written into config.rs when it is first created. Default: the document's first server." },
+        "keepJson": { "type": "boolean", "default": false, "description": "Save the document as swagger.json in dir." },
+        "local": { "type": "boolean", "default": false, "description": "Generate from the swagger.json saved in dir." },
+        "rustfmt": { "type": "boolean", "default": true, "description": "Format the output with rustfmt when installed." },
+        "language": { "const": "rust", "description": "Accepted for compatibility with swagger-typescript configs." }
+      }
+    }
+  }
+}

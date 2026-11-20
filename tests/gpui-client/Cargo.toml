@@ -1,0 +1,16 @@
+[package]
+name = "swagger-rust-gpui-client"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Compiles the GPUI flavour of a generated client (see README.md)"
+
+[dependencies]
+# Any GPUI with async-closure `spawn` and `http_client` works; this is the
+# published pre-release build.
+gpui = { package = "gpui-pre", version = "=0.3.6" }
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[workspace]
