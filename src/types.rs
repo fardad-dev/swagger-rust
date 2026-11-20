@@ -501,6 +501,7 @@ impl<'a> Types<'a> {
                 doc: property.doc(),
                 deprecated: property.deprecated,
                 flatten: false,
+                minimum: property.minimum,
             });
         }
         let name = match named {

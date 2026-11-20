@@ -25,6 +25,7 @@ pub struct Schema {
     pub title: Option<String>,
     pub description: Option<String>,
     pub deprecated: bool,
+    pub minimum: Option<f64>,
     /// `false`, `{"not": {}}`: matches nothing.
     pub never: bool,
 }
@@ -157,6 +158,7 @@ impl Schema {
         }
         schema.title = string("title");
         schema.description = string("description");
+        schema.minimum = object.get("minimum").and_then(Value::as_f64);
         schema.deprecated = object
             .get("deprecated")
             .and_then(Value::as_bool)

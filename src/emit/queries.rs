@@ -130,26 +130,44 @@ fn query(operation: &Operation, types: &Types) -> String {
 
     let infinite = match &operation.query_kind {
         QueryKind::Infinite {
-            page_field,
+            path,
             page_ty,
-            optional,
-        } if serializable(&operation.response, types) => Some((page_field, page_ty, *optional)),
+            zero_based,
+        } if serializable(&operation.response, types) => Some((path, page_ty, *zero_based)),
         _ => None,
     };
     match infinite {
-        Some((page_field, page_ty, optional)) => {
-            let page = if *page_ty == Ty::I32 {
-                "page as i32"
+        Some((path, page_ty, zero_based)) => {
+            // `InfiniteQuery` counts pages from 1.
+            let number = if zero_based { "(page - 1)" } else { "page" };
+            let value = if *page_ty == Ty::I32 {
+                format!("{number} as i32")
             } else {
-                "page"
+                number.trim_matches(|c| c == '(' || c == ')').to_owned()
             };
-            let assign = if optional {
-                format!("Some({page})")
+            // `query.pageable.get_or_insert_with(Default::default).page = Some(page)`.
+            let (last, outer) = path.split_last().expect("a page field");
+            let mut target = "query".to_owned();
+            for (field, optional) in outer {
+                target.push('.');
+                target.push_str(field);
+                if *optional {
+                    target.push_str(".get_or_insert_with(Default::default)");
+                }
+            }
+            let assign = if last.1 {
+                format!("Some({value})")
             } else {
-                page.to_owned()
+                value
             };
+            let shown = path
+                .iter()
+                .map(|(f, _)| f.as_str())
+                .collect::<Vec<_>>()
+                .join(".");
+            let first = if zero_based { 0 } else { 1 };
             out.push_str(&format!(
-                "///\n/// Paged through `{page_field}`, from 1: see [`InfiniteQuery`].\n{deprecated}pub fn {fn_name}(cx: &mut App{signature}) -> Entity<InfiniteQuery<{response}>> {{\n"
+                "///\n/// Paged through `{shown}` (from {first}): see [`InfiniteQuery`].\n{deprecated}pub fn {fn_name}(cx: &mut App{signature}) -> Entity<InfiniteQuery<{response}>> {{\n"
             ));
             out.push_str(&format!("    let key = {key};\n"));
             out.push_str("    query_client::infinite_query(cx, key, move |http, page| {\n");
@@ -157,7 +175,7 @@ fn query(operation: &Operation, types: &Types) -> String {
                 "let query = query.clone();",
                 "let mut query = query.clone();",
             ));
-            out.push_str(&format!("        query.{page_field} = {assign};\n"));
+            out.push_str(&format!("        {target}.{} = {assign};\n", last.0));
             out.push_str(&format!("        async move {{ {call} }}\n    }})\n}}\n"));
         }
         None => {

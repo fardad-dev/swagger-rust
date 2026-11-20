@@ -36,6 +36,9 @@ struct Param {
     required: bool,
     schema: Schema,
     description: Option<String>,
+    /// `style`; `None` is the location's default (`form` for queries).
+    style: Option<String>,
+    explode: Option<bool>,
 }
 
 pub fn build(
@@ -210,7 +213,7 @@ pub fn build(
             built.response = response(operation, &prefix_name, types);
 
             if config.gpui {
-                built.query_kind = query_kind(config, &built, &query_fields, &mut warnings);
+                built.query_kind = query_kind(config, &built, &query_fields, types, &mut warnings);
             }
             operations.push(built);
         }
@@ -278,6 +281,8 @@ fn parse_params(value: Option<&Value>, types: &Types) -> Vec<Param> {
                         .and_then(Value::as_bool)
                         .unwrap_or(false),
                 description: text(item, "description"),
+                style: text(item, "style"),
+                explode: item.get("explode").and_then(Value::as_bool),
                 name,
                 location,
                 schema,
@@ -308,6 +313,7 @@ fn extra_query_field(fields: &[Field]) -> Field {
         ),
         deprecated: false,
         flatten: true,
+        minimum: None,
     }
 }
 
@@ -318,6 +324,15 @@ fn param_fields(struct_name: &str, params: &[&Param], types: &mut Types) -> Vec<
         .map(|param| {
             let (ty, nullable) =
                 types.resolve(&param.schema, &Hint::field(struct_name, &param.name));
+            // An object in the query string is sent as its properties
+            // (`page=0&size=20`) unless it says `style: deepObject` (`a[b]=1`)
+            // or `explode: false`.
+            let form = param.style.as_deref().is_none_or(|style| style == "form")
+                && param.explode != Some(false);
+            let object = matches!(
+                ty.named().and_then(|name| types.defs.get(name)),
+                Some(Def::Struct(_))
+            );
             Field {
                 json: param.name.clone(),
                 name: names.unique(&naming::value_ident(&param.name)),
@@ -326,7 +341,8 @@ fn param_fields(struct_name: &str, params: &[&Param], types: &mut Types) -> Vec<
                 boxed: false,
                 doc: param.description.clone().or_else(|| param.schema.doc()),
                 deprecated: param.schema.deprecated,
-                flatten: false,
+                flatten: param.location == "query" && form && object,
+                minimum: param.schema.minimum,
             }
         })
         .collect()
@@ -464,6 +480,7 @@ fn multipart(prefix: &str, schema: &Schema, types: &mut Types) -> Body {
             doc: property.doc(),
             deprecated: property.deprecated,
             flatten: false,
+            minimum: property.minimum,
         });
     }
     types.insert(Def::Struct(StructDef {
@@ -555,19 +572,35 @@ fn query_kind(
     config: &Config,
     operation: &Operation,
     query_fields: &[Field],
+    types: &Types,
     warnings: &mut Vec<String>,
 ) -> QueryKind {
     if listed(&config.use_infinite_query, operation) {
-        let page = query_fields
+        let is_page =
+            |f: &Field| PAGE_PARAMS.contains(&f.json.to_lowercase().as_str()) && f.ty.is_integer();
+        let direct = query_fields
             .iter()
-            .find(|f| PAGE_PARAMS.contains(&f.json.to_lowercase().as_str()) && f.ty.is_integer());
-        match page {
-            Some(field) => {
+            .find(|f| is_page(f))
+            .map(|f| (vec![], f.clone()));
+        // A page inside an object sent as its properties (Spring's `pageable`).
+        let nested = || {
+            query_fields.iter().filter(|f| f.flatten).find_map(|outer| {
+                let Some(Def::Struct(inner)) = outer.ty.named().and_then(|n| types.defs.get(n))
+                else {
+                    return None;
+                };
+                let page = inner.fields.iter().find(|f| is_page(f))?;
+                Some((vec![(outer.name.clone(), outer.optional)], page.clone()))
+            })
+        };
+        match direct.or_else(nested) {
+            Some((mut path, page)) => {
+                path.push((page.name.clone(), page.optional));
                 return QueryKind::Infinite {
-                    page_field: field.name.clone(),
-                    page_ty: field.ty.clone(),
-                    optional: field.optional,
-                }
+                    path,
+                    page_ty: page.ty.clone(),
+                    zero_based: page.minimum == Some(0.0),
+                };
             }
             None => warnings.push(format!(
                 "`{}` is in useInfiniteQuery but has no integer page, pageNo, pageNumber or offset query parameter; generated as a plain query",

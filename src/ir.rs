@@ -84,8 +84,11 @@ pub struct Field {
     pub boxed: bool,
     pub doc: Option<String>,
     pub deprecated: bool,
-    /// `#[serde(flatten)]`: the catch-all `extra` map of query parameters.
+    /// `#[serde(flatten)]`: the catch-all `extra` map of query parameters,
+    /// or an object parameter sent as its properties (`style: form`).
     pub flatten: bool,
+    /// The schema's `minimum`, which tells 0- from 1-based page numbers.
+    pub minimum: Option<f64>,
 }
 
 impl Field {
@@ -233,9 +236,13 @@ pub enum QueryKind {
     Query,
     /// Pages through `page_field` of the query parameters.
     Infinite {
-        page_field: String,
+        /// The fields leading to the page number in the query parameters
+        /// (`page`, or `pageable` then `page`), with whether each is an
+        /// `Option`.
+        path: Vec<(String, bool)>,
         page_ty: Ty,
-        optional: bool,
+        /// Page numbers start at 0 (Spring's `Pageable`).
+        zero_based: bool,
     },
 }
 

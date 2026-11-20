@@ -278,3 +278,21 @@ fn openapi31_type_arrays_and_nullable_unions() {
     assert_eq!(item.parent.unwrap().label.as_deref(), Some("x"));
     assert_eq!(item.tags, Some(vec![Some("t".into()), None]));
 }
+
+#[test]
+fn object_query_parameters_follow_their_style() {
+    use strict::models::{Filter, GetFeedSpringQueryParams, Pageable};
+    let mock = Mock::json(json!({"content": [], "last": true}));
+    let query = GetFeedSpringQueryParams {
+        pageable: Pageable { page: Some(0), size: Some(20), sort: Some(vec!["name".into()]) },
+        filter: Some(Filter { color: Some("red".into()) }),
+        ..Default::default()
+    };
+    let page = block_on(strict::apis::get_feed_spring(&mock, &query)).unwrap();
+    assert_eq!(page.last, Some(true));
+    // `style: form` (the default) sends the object's properties; `deepObject` nests them.
+    assert_eq!(
+        mock.last().url,
+        "https://eu.petstore.example/v1/feed/spring?page=0&size=20&sort=name&filter%5Bcolor%5D=red"
+    );
+}

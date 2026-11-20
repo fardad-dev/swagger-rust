@@ -153,6 +153,21 @@ impl FromJson for FeedPage {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct Filter {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+}
+
+impl FromJson for Filter {
+    fn from_json(value: Value) -> Option<Self> {
+        let mut object = json::object(value)?;
+        Some(Self {
+            color: json::optional(&mut object, "color"),
+        })
+    }
+}
+
 /// Query parameters of [`get_feed`](super::apis::get_feed).
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct GetFeedQueryParams {
@@ -160,6 +175,19 @@ pub struct GetFeedQueryParams {
     pub page: Option<i32>,
     #[serde(rename = "pageSize", skip_serializing_if = "Option::is_none")]
     pub page_size: Option<i64>,
+    /// Parameters the document doesn't list, sent like the others
+    /// (`price[min]=1`; arrays as `config::ARRAY_FORMAT` says).
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Query parameters of [`get_feed_spring`](super::apis::get_feed_spring).
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct GetFeedSpringQueryParams {
+    #[serde(flatten)]
+    pub pageable: Pageable,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter: Option<Filter>,
     /// Parameters the document doesn't list, sent like the others
     /// (`price[min]=1`; arrays as `config::ARRAY_FORMAT` says).
     #[serde(flatten)]
@@ -296,6 +324,27 @@ impl FromJson for Owner {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct Pageable {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort: Option<Vec<String>>,
+}
+
+impl FromJson for Pageable {
+    fn from_json(value: Value) -> Option<Self> {
+        let mut object = json::object(value)?;
+        Some(Self {
+            page: json::optional(&mut object, "page"),
+            size: json::optional(&mut object, "size"),
+            sort: json::optional(&mut object, "sort"),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Pager {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_page: Option<i64>,
@@ -372,6 +421,30 @@ impl FromJson for Pet {
             vaccinated: json::optional(&mut object, "vaccinated"),
             size: json::optional(&mut object, "size"),
             legacy_code: json::optional(&mut object, "legacy_code"),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct PetPage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<Vec<Pet>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub number: Option<i64>,
+    #[serde(rename = "totalPages", skip_serializing_if = "Option::is_none")]
+    pub total_pages: Option<i64>,
+}
+
+impl FromJson for PetPage {
+    fn from_json(value: Value) -> Option<Self> {
+        let mut object = json::object(value)?;
+        Some(Self {
+            content: json::optional(&mut object, "content"),
+            last: json::optional(&mut object, "last"),
+            number: json::optional(&mut object, "number"),
+            total_pages: json::optional(&mut object, "totalPages"),
         })
     }
 }
@@ -718,11 +791,14 @@ json::deserialize_via_from_json!(
     Circle,
     Dog,
     FeedPage,
+    Filter,
     Kind,
     Meta,
     Owner,
+    Pageable,
     Pager,
     Pet,
+    PetPage,
     PetStatus,
     PostLoginRequestBody,
     PostSearchRequestBody,

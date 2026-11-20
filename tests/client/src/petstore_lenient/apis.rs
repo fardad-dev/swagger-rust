@@ -56,6 +56,19 @@ pub async fn get_store_feed(
     runtime::send_json(transport, request).await
 }
 
+/// `GET /feed/spring`
+///
+/// A Spring Data page
+pub async fn get_store_feed_spring(
+    transport: &(impl runtime::Transport + ?Sized),
+    query: &models::GetStoreFeedSpringQueryParams,
+) -> Result<models::PetPage, runtime::ApiError> {
+    let request = runtime::Request::new(runtime::Method::Get, "/feed/spring")
+        .query(query)
+        .accept("application/json");
+    runtime::send_json(transport, request).await
+}
+
 /// `GET /owners/{owner name}/pets`
 pub async fn get_store_owners_owner_name_pets(
     transport: &(impl runtime::Transport + ?Sized),

@@ -80,7 +80,7 @@ pub async fn get_pets(
 ) -> Result<Vec<models::Pet>, runtime::ApiError>
 ```
 
-Arguments come in swagger-typescript's order: path parameters, `body`, `query` (a `…QueryParams` struct), `headers` (a `…HeaderParams` struct). Query and header structs implement `Default`, so `&Default::default()` works when you don't need any. Query structs also have an `extra` map for parameters the document doesn't list (free-form filters): `extra: json!({"price": {"min": 1}})` sends `price[min]=1`.
+Arguments come in swagger-typescript's order: path parameters, `body`, `query` (a `…QueryParams` struct), `headers` (a `…HeaderParams` struct). Query and header structs implement `Default`, so `&Default::default()` works when you don't need any. Query structs also have an `extra` map for parameters the document doesn't list (free-form filters): `extra: json!({"price": {"min": 1}})` sends `price[min]=1`. An object parameter is sent as its properties (`page=0&size=20`, OpenAPI's default `style: form`), or nested (`filter[color]=red`) with `style: deepObject`.
 
 Request bodies can be JSON, `application/x-www-form-urlencoded`, `multipart/form-data` (file fields are `runtime::FilePart`), text or bytes. Responses decode as JSON, `String` (text), `Vec<u8>` (binary) or `()` (no content).
 
@@ -171,7 +171,7 @@ impl Render for PetView {
 - **Cached.** Data outlives the entities for `cache_time` (5 min). A view that comes back shows it at once, while it refreshes if older than `stale_time` (default 0).
 - **Invalidation.** After a change, `query_client::invalidate_endpoint(cx, queries::GET_PETS)` refetches every `GET /pets` query in use. `invalidate(cx, |key| …)` takes any filter.
 - **Prefetch.** `queries::prefetch_get_pets_pet_id(cx, id)` loads data before a view asks for it.
-- **Paging.** Endpoints listed in `useInfiniteQuery` return an `InfiniteQuery<T>`. It requests pages 1, 2, 3… through their `page`/`pageNo`/`pageNumber`/`offset` parameter, with `fetch_next_page` and `has_next_page`. Whether a next page exists is read from the page (`has_next`, `last`, current vs total pages, `total`), or decided by your own `set_has_next_page`.
+- **Paging.** Endpoints listed in `useInfiniteQuery` return an `InfiniteQuery<T>`. It requests pages 1, 2, 3… through their `page`/`pageNo`/`pageNumber`/`offset` parameter (also inside an object parameter such as Spring's `pageable`; counted from 0 when the schema says `minimum: 0`), with `fetch_next_page` and `has_next_page`. Whether a next page exists is read from the page (`has_next`, `last`, current vs total pages, `total`), or decided by your own `set_has_next_page`.
 - **Mutations** are plain `apis` calls. `query_client::request(cx, |http| …)` runs one off the main thread; then invalidate, or `set_query_data`.
 - Options: `query_client::set_default_options(cx, QueryOptions { stale_time, cache_time, retry, retry_delay })`, or per query with `set_options`.
 

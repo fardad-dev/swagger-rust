@@ -48,7 +48,7 @@ pub const GET_FEED: &str = "GET /feed";
 
 /// `GET /feed`
 ///
-/// Paged through `page`, from 1: see [`InfiniteQuery`].
+/// Paged through `page` (from 1): see [`InfiniteQuery`].
 pub fn get_feed(
     cx: &mut App,
     query: models::GetFeedQueryParams,
@@ -58,6 +58,26 @@ pub fn get_feed(
         let mut query = query.clone();
         query.page = Some(page as i32);
         async move { apis::get_feed(&http, &query).await }
+    })
+}
+
+/// The [`QueryKey`] endpoint of [`get_feed_spring`], for [`query_client::invalidate_endpoint`].
+pub const GET_FEED_SPRING: &str = "GET /feed/spring";
+
+/// `GET /feed/spring`
+///
+/// A Spring Data page
+///
+/// Paged through `pageable.page` (from 0): see [`InfiniteQuery`].
+pub fn get_feed_spring(
+    cx: &mut App,
+    query: models::GetFeedSpringQueryParams,
+) -> Entity<InfiniteQuery<models::PetPage>> {
+    let key = QueryKey::new(GET_FEED_SPRING, &(&query,));
+    query_client::infinite_query(cx, key, move |http, page| {
+        let mut query = query.clone();
+        query.pageable.page = Some((page - 1) as i32);
+        async move { apis::get_feed_spring(&http, &query).await }
     })
 }
 

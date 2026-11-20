@@ -811,8 +811,11 @@ fn default_has_next_page(page: &Value, items: usize) -> bool {
             }
         }
     }
-    if let Some(Value::Bool(last)) = page.get("last") {
-        return !last;
+    // Spring's `Page`, possibly inside an envelope's `data`.
+    for object in &objects {
+        if let Some(Value::Bool(last)) = object.get("last") {
+            return !last;
+        }
     }
     let current = first_number(&objects, &["current_page", "currentPage", "page_number", "pageNumber", "page", "number"]);
     let total_pages =

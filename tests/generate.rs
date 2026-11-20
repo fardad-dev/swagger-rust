@@ -91,7 +91,7 @@ fn petstore_gpui() {
         config(
             "petstore.json",
             &dir,
-            json!({ "decode": "lenient", "gpui": true, "useInfiniteQuery": ["getFeed"], "useQuery": ["postSearch"] }),
+            json!({ "decode": "lenient", "gpui": true, "useInfiniteQuery": ["getFeed", "getFeedSpring"], "useQuery": ["postSearch"] }),
         ),
     );
 }

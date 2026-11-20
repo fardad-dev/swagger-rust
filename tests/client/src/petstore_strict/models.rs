@@ -113,6 +113,12 @@ pub struct FeedPage {
     pub pager: Option<Pager>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Filter {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+}
+
 /// Query parameters of [`get_feed`](super::apis::get_feed).
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct GetFeedQueryParams {
@@ -120,6 +126,19 @@ pub struct GetFeedQueryParams {
     pub page: Option<i32>,
     #[serde(rename = "pageSize", skip_serializing_if = "Option::is_none")]
     pub page_size: Option<i64>,
+    /// Parameters the document doesn't list, sent like the others
+    /// (`price[min]=1`; arrays as `config::ARRAY_FORMAT` says).
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Query parameters of [`get_feed_spring`](super::apis::get_feed_spring).
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct GetFeedSpringQueryParams {
+    #[serde(flatten)]
+    pub pageable: Pageable,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter: Option<Filter>,
     /// Parameters the document doesn't list, sent like the others
     /// (`price[min]=1`; arrays as `config::ARRAY_FORMAT` says).
     #[serde(flatten)]
@@ -235,6 +254,16 @@ pub struct Owner {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Pageable {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sort: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Pager {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_page: Option<i64>,
@@ -279,6 +308,22 @@ pub struct Pet {
     /// **Deprecated.**
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legacy_code: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct PetPage {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<Vec<Pet>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number: Option<i64>,
+    #[serde(
+        rename = "totalPages",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub total_pages: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
