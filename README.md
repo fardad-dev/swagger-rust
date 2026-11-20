@@ -80,7 +80,7 @@ pub async fn get_pets(
 ) -> Result<Vec<models::Pet>, runtime::ApiError>
 ```
 
-Arguments come in swagger-typescript's order: path parameters, `body`, `query` (a `…QueryParams` struct), `headers` (a `…HeaderParams` struct). Query and header structs implement `Default`, so `&Default::default()` works when you don't need any.
+Arguments come in swagger-typescript's order: path parameters, `body`, `query` (a `…QueryParams` struct), `headers` (a `…HeaderParams` struct). Query and header structs implement `Default`, so `&Default::default()` works when you don't need any. Query structs also have an `extra` map for parameters the document doesn't list (free-form filters): `extra: json!({"price": {"min": 1}})` sends `price[min]=1`.
 
 Request bodies can be JSON, `application/x-www-form-urlencoded`, `multipart/form-data` (file fields are `runtime::FilePart`), text or bytes. Responses decode as JSON, `String` (text), `Vec<u8>` (binary) or `()` (no content).
 

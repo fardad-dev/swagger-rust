@@ -163,13 +163,15 @@ pub fn build(
             if !query_params.is_empty() {
                 let name = types.reserve_name(&format!("{prefix_name}QueryParams"));
                 query_fields = param_fields(&name, &query_params, types);
+                let mut fields = query_fields.clone();
+                fields.push(extra_query_field(&query_fields));
                 types.insert(Def::Struct(StructDef {
                     name: name.clone(),
                     doc: Some(format!(
                         "Query parameters of [`{}`](super::apis::{}).",
                         built.fn_name, built.fn_name
                     )),
-                    fields: query_fields.clone(),
+                    fields,
                     input_only: true,
                     deprecated: false,
                 }));
@@ -284,6 +286,31 @@ fn parse_params(value: Option<&Value>, types: &Types) -> Vec<Param> {
         .collect()
 }
 
+/// The `extra` field of query parameter structs: parameters an API takes
+/// but its document doesn't list (free-form filters, say).
+fn extra_query_field(fields: &[Field]) -> Field {
+    let taken = |name: &str| fields.iter().any(|f| f.name == name || f.json == name);
+    let name = if taken("extra") {
+        "extra_query"
+    } else {
+        "extra"
+    };
+    Field {
+        json: name.to_owned(),
+        name: name.to_owned(),
+        ty: Ty::Object,
+        optional: false,
+        boxed: false,
+        doc: Some(
+            "Parameters the document doesn't list, sent like the others\n\
+             (`price[min]=1`; arrays as `config::ARRAY_FORMAT` says)."
+                .to_owned(),
+        ),
+        deprecated: false,
+        flatten: true,
+    }
+}
+
 fn param_fields(struct_name: &str, params: &[&Param], types: &mut Types) -> Vec<Field> {
     let mut names = Names::new();
     params
@@ -299,6 +326,7 @@ fn param_fields(struct_name: &str, params: &[&Param], types: &mut Types) -> Vec<
                 boxed: false,
                 doc: param.description.clone().or_else(|| param.schema.doc()),
                 deprecated: param.schema.deprecated,
+                flatten: false,
             }
         })
         .collect()
@@ -435,6 +463,7 @@ fn multipart(prefix: &str, schema: &Schema, types: &mut Types) -> Body {
             boxed: false,
             doc: property.doc(),
             deprecated: property.deprecated,
+            flatten: false,
         });
     }
     types.insert(Def::Struct(StructDef {

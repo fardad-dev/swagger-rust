@@ -74,13 +74,21 @@ fn query_and_header_parameters_and_typed_response() {
         "tags": [{"id": 1, "name": "good"}], "size": 2,
         "parent": {"id": 0, "name": "Mom", "status": "sold"}
     }]));
-    let query = GetPetsQueryParams { status: Some(vec![PetStatus::Available, PetStatus::Sold]), limit: Some(10) };
+    let extra = json!({"price": {"min": 1}, "brands": [18, 3]});
+    let query = GetPetsQueryParams {
+        status: Some(vec![PetStatus::Available, PetStatus::Sold]),
+        limit: Some(10),
+        extra: extra.as_object().unwrap().clone(),
+    };
     let headers = GetPetsHeaderParams { x_request_id: "abc".into() };
     let pets = block_on(strict::apis::get_pets(&mock, &query, &headers)).unwrap();
 
     let sent = mock.last();
     assert_eq!(sent.method, "GET");
-    assert_eq!(sent.url, "https://eu.petstore.example/v1/pets?status=available&status=sold&limit=10");
+    assert_eq!(
+        sent.url,
+        "https://eu.petstore.example/v1/pets?status=available&status=sold&limit=10&price%5Bmin%5D=1&brands=18&brands=3"
+    );
     assert_eq!(sent.header("X-Request-Id"), Some("abc"));
     assert_eq!(sent.header("Accept"), Some("application/json"));
     assert!(sent.header("X-App-Version").is_none(), "ignored header parameter");
@@ -131,7 +139,7 @@ fn lenient_decoding_survives_a_drifting_backend() {
 fn path_parameters_are_encoded() {
     use strict::models::{GetOwnersOwnerNamePetsQueryParams, Kind};
     let mock = Mock::json(json!([]));
-    let query = GetOwnersOwnerNamePetsQueryParams { kind: Some(Kind::Cat) };
+    let query = GetOwnersOwnerNamePetsQueryParams { kind: Some(Kind::Cat), ..Default::default() };
     block_on(strict::apis::get_owners_owner_name_pets(&mock, "Ann Lee/2", &query)).unwrap();
     assert_eq!(mock.last().url, "https://eu.petstore.example/v1/owners/Ann%20Lee%2F2/pets?kind=cat");
 }
@@ -247,7 +255,7 @@ fn query_string_formats() {
 fn swagger2_documents() {
     use swagger2::models::{GetOrdersIdQueryParams, OrderOrder, OrderState};
     let mock = Mock::json(json!({"id": 1, "state": 2, "note": null, "shipping": {"city": "Tehran"}, "lines": [{"sku": "x", "qty": 2}]}));
-    let query = GetOrdersIdQueryParams { expand: Some(vec!["lines".into()]) };
+    let query = GetOrdersIdQueryParams { expand: Some(vec!["lines".into()]), ..Default::default() };
     let order = block_on(swagger2::apis::get_orders_id(&mock, 1, &query)).unwrap();
     assert_eq!(mock.last().url, "https://store.example/api/orders/1?expand=lines");
     assert_eq!(order.state, OrderState::StateShipped);

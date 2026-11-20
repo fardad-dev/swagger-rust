@@ -89,7 +89,9 @@ fn structure(s: &StructDef, lenient: bool) -> String {
             out.push_str("    /// **Deprecated.**\n");
         }
         let mut attributes = Vec::new();
-        if field.name != field.json {
+        if field.flatten {
+            attributes.push("flatten".to_owned());
+        } else if field.name != field.json {
             attributes.push(format!("rename = {}", string_literal(&field.json)));
         }
         if field.optional {

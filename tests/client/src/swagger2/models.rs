@@ -24,6 +24,10 @@ use serde_json::Value;
 pub struct GetOrdersIdQueryParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expand: Option<Vec<String>>,
+    /// Parameters the document doesn't list, sent like the others
+    /// (`price[min]=1`; arrays as `config::ARRAY_FORMAT` says).
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

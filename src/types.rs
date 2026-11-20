@@ -500,6 +500,7 @@ impl<'a> Types<'a> {
                 boxed: false,
                 doc: property.doc(),
                 deprecated: property.deprecated,
+                flatten: false,
             });
         }
         let name = match named {

@@ -84,6 +84,8 @@ pub struct Field {
     pub boxed: bool,
     pub doc: Option<String>,
     pub deprecated: bool,
+    /// `#[serde(flatten)]`: the catch-all `extra` map of query parameters.
+    pub flatten: bool,
 }
 
 impl Field {

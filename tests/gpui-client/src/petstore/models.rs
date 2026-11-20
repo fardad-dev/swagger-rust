@@ -160,6 +160,10 @@ pub struct GetFeedQueryParams {
     pub page: Option<i32>,
     #[serde(rename = "pageSize", skip_serializing_if = "Option::is_none")]
     pub page_size: Option<i64>,
+    /// Parameters the document doesn't list, sent like the others
+    /// (`price[min]=1`; arrays as `config::ARRAY_FORMAT` says).
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 /// Query parameters of [`get_owners_owner_name_pets`](super::apis::get_owners_owner_name_pets).
@@ -167,6 +171,10 @@ pub struct GetFeedQueryParams {
 pub struct GetOwnersOwnerNamePetsQueryParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<Kind>,
+    /// Parameters the document doesn't list, sent like the others
+    /// (`price[min]=1`; arrays as `config::ARRAY_FORMAT` says).
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 /// Header parameters of [`get_pets`](super::apis::get_pets).
@@ -186,6 +194,10 @@ pub struct GetPetsQueryParams {
     pub status: Option<Vec<PetStatus>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
+    /// Parameters the document doesn't list, sent like the others
+    /// (`price[min]=1`; arrays as `config::ARRAY_FORMAT` says).
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 pub type Id = i64;
